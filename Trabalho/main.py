@@ -18,7 +18,9 @@ import logging
 from pprint import pformat
 import pygame as pg
 
-# Configurações de logging
+# -------------------------
+# Configurações de Logs
+# -------------------------
 LOG_LEVEL = logging.INFO  # defina logging.DEBUG para mais detalhes
 
 def configurar_logging():
@@ -48,17 +50,6 @@ def dump_estado(pontos_mundo, retas_mundo, algoritmo, ponto_A):
         pformat(pontos_mundo),
         pformat(retas_mundo),
     )
-
-# ... aqui permanecem as configurações (tamanhos, cores, etc.) ...
-
-def inicializar():
-    pg.init()
-    pg.display.set_caption("TP1 CG — Etapa 09: Retas que plotam pontos (DDA/Bresenham)")
-    tela = pg.display.set_mode((LARGURA, ALTURA))
-    relogio = pg.time.Clock()
-    fonte = pg.font.Font(None, TAM_FONTE)
-    log.info("Pygame inicializado | janela=%dx%d", LARGURA, ALTURA)
-    return tela, relogio, fonte 
 
 # -------------------------
 # Configurações
@@ -94,22 +85,27 @@ ESP_GUIA = 1  # espessura da linha de prévia (apenas guia visual)
 # -------------------------
 # Inicialização
 # -------------------------
+
 def inicializar():
     pg.init()
     pg.display.set_caption("TP1 CG — Etapa 09: Retas que plotam pontos (DDA/Bresenham)")
     tela = pg.display.set_mode((LARGURA, ALTURA))
     relogio = pg.time.Clock()
     fonte = pg.font.Font(None, TAM_FONTE)
-    return tela, relogio, fonte
+    log.info("Pygame inicializado | janela=%dx%d", LARGURA, ALTURA)
+    return tela, relogio, fonte 
 
 # -------------------------
 # Coordenadas
 # -------------------------
-def mundo_para_tela(x, y):
+def conversao_valor_original(x, y):
+    """Converte as coordenaddas selecionadas para as reais do canvas"""
     cx, cy = LARGURA // 2, ALTURA // 2
     return int(round(cx + x)), int(round(cy - y))
 
-def tela_para_mundo(sx, sy):
+def conversao_valor_alterado(sx, sy):
+    """Converte as coordenadas do topo-esquerdo para coordenadas centro"""
+    log.info("Convertendo posições | original=(%d,%d)", sx, sy)
     cx, cy = LARGURA // 2, ALTURA // 2
     return sx - cx, cy - sy
 
@@ -165,9 +161,10 @@ def desenhar_painel(tela, fonte, algoritmo):
 
     return r_dda, r_bres, r_limpar
 
-# -------------------------
+# -----------------------------
 # Rasterização (pixel a pixel)
-# -------------------------
+# -----------------------------
+
 def put_pixel(tela, x, y, cor):
     if 0 <= x < LARGURA and 0 <= y < ALTURA:
         tela.set_at((int(x), int(y)), cor)
@@ -206,7 +203,7 @@ def reta_bresenham(tela, x0, y0, x1, y1, cor):
 # -------------------------
 def desenhar_pontos(tela, fonte, pontos_mundo):
     for (x, y) in pontos_mundo:
-        sx, sy = mundo_para_tela(x, y)
+        sx, sy = conversao_valor_original(x, y)
         pg.draw.circle(tela, COR_PONTO, (sx, sy), RAIO_PONTO)
         label = fonte.render(f"({x}, {y})", True, COR_TEXTO)
         tela.blit(label, (sx + DESLOC_TEXTO[0], sy + DESLOC_TEXTO[1]))
@@ -214,21 +211,21 @@ def desenhar_pontos(tela, fonte, pontos_mundo):
 def desenhar_retas(tela, retas_mundo, algoritmo):
     # log.info("Desenhando reta")
     for (ax, ay), (bx, by) in retas_mundo:
-        sx0, sy0 = mundo_para_tela(ax, ay)
-        sx1, sy1 = mundo_para_tela(bx, by)
+        sx0, sy0 = conversao_valor_original(ax, ay)
+        sx1, sy1 = conversao_valor_original(bx, by)
         if algoritmo == ALGO_DDA:
             reta_dda(tela, sx0, sy0, sx1, sy1, COR_RETA)
         else:
             reta_bresenham(tela, sx0, sy0, sx1, sy1, COR_RETA)
 
-def desenhar_previa(tela, ponto_A_mundo, pos_mouse_tela):
-    if ponto_A_mundo is None or pos_mouse_tela is None:
-        return
-    ax, ay = mundo_para_tela(*ponto_A_mundo)
-    mx, my = pos_mouse_tela
-    if my < ALTURA_PAINEL:  # não desenhar sobre o painel
-        my = ALTURA_PAINEL
-    pg.draw.line(tela, COR_PREVIA, (ax, ay), (mx, my), ESP_GUIA)
+# def desenhar_previa(tela, ponto_A_mundo, pos_mouse_tela):
+#     if ponto_A_mundo is None or pos_mouse_tela is None:
+#         return
+#     ax, ay = conversao_valor_original(*ponto_A_mundo)
+#     mx, my = pos_mouse_tela
+#     if my < ALTURA_PAINEL:  # não desenhar sobre o painel
+#         my = ALTURA_PAINEL
+#     pg.draw.line(tela, COR_PREVIA, (ax, ay), (mx, my), ESP_GUIA)
 
 # -------------------------
 # Main loop
@@ -249,8 +246,8 @@ def main():
         r_dda, r_bres, r_limpar = desenhar_painel(tela, fonte, algoritmo)
         desenhar_retas(tela, retas_mundo, algoritmo)
         desenhar_pontos(tela, fonte, pontos_mundo)
-        if ponto_A is not None:
-            desenhar_previa(tela, ponto_A, pg.mouse.get_pos())
+        # if ponto_A is not None:
+        #     desenhar_previa(tela, ponto_A, pg.mouse.get_pos())
 
         pg.display.flip()
         relogio.tick(60)
@@ -288,8 +285,8 @@ def main():
 
 
                 # Clique no canvas: cada clique plota ponto; a cada par de cliques cria reta
-                x, y = tela_para_mundo(sx, sy)
-                log.info("Conversão | mundo=(%d,%d)", x, y)
+                x, y = conversao_valor_alterado(sx, sy)
+                log.info("Posições convertidas | convertido=(%d,%d)", x, y)
                 pontos_mundo.append((x, y))
                 log.info("Ponto criado | aguardando par? %s | ponto=(%d,%d)", ponto_A is not None, x, y)
                 if ponto_A is None:
