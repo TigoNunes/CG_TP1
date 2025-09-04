@@ -1,15 +1,18 @@
-# main.py
+# main_oop.py
 """
-TP1 CG — Canvas com painel lateral e abas
+TP1 CG — Versão OOP com painel lateral e abas.
+
 - Canvas à esquerda (origem no centro, grade e eixos)
-- Painel lateral à direita com abas:
-    [Retas] (funcional: DDA/Bresenham + Limpar)
-    [Circunf.] (placeholder)
-    [Polígonos] (placeholder)
-    [Transform.] (placeholder)
-- Dois cliques no canvas (aba Retas):
-    1º clique -> cria Ponto A (plota e rotula)
-    2º clique -> cria Ponto B (plota e rotula) + rasteriza A→B com algoritmo ativo
+- Painel à direita com abas:
+    Retas      : desenha retas com DDA ou Bresenham (selecionável)
+    Circunf.   : placeholder para circunferências
+    Polígonos  : placeholder para polígonos
+    Transform. : placeholder para seleções/transformações
+
+Principais mudanças:
+- Usa classes Ponto e Reta do módulo entities.py.
+- Cada clique no canvas cria um Ponto. Na aba Retas, dois cliques consecutivos criam Ponto A e Ponto B e geram uma Reta(A,B,algoritmo).
+- As retas são desenhadas chamando reta.draw(), que escolhe DDA ou Bresenham internamente.
 """
 
 import sys
@@ -17,30 +20,34 @@ import logging
 from pprint import pformat
 import pygame as pg
 
+# Importa as classes definidas em entities.py
+from entities import Ponto, Reta, Circunferencia, Poligono
+
 # =========================
 # LOGGING
 # =========================
-LOG_LEVEL = logging.INFO  # troque para logging.DEBUG se quiser mais verbosidade
+LOG_LEVEL = logging.INFO  # use logging.DEBUG para mais detalhes
 
 def configurar_logging():
-    logger = logging.getLogger("TP1")
+    logger = logging.getLogger("TP1_OOP")
     logger.setLevel(LOG_LEVEL)
     logger.handlers.clear()
     fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", "%H:%M:%S")
     ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(LOG_LEVEL); ch.setFormatter(fmt)
-    fh = logging.FileHandler("tp1.log", mode="w", encoding="utf-8")
+    fh = logging.FileHandler("tp1_oop.log", mode="w", encoding="utf-8")
     fh.setLevel(LOG_LEVEL); fh.setFormatter(fmt)
     logger.addHandler(ch); logger.addHandler(fh)
     return logger
 
 log = configurar_logging()
 
-def dump_estado(pontos_mundo, retas_mundo, algoritmo, ponto_A, aba):
+def dump_estado(pontos, retas, algoritmo, ponto_A, aba):
     log.info(
         "ESTADO | aba=%s | algoritmo=%s | ponto_A=%s | #pontos=%d | #retas=%d\npontos=%s\nretas=%s",
-        aba, algoritmo, ponto_A, len(pontos_mundo), len(retas_mundo),
-        pformat(pontos_mundo), pformat(retas_mundo)
+        aba, algoritmo, ponto_A, len(pontos), len(retas),
+        pformat([p.as_tuple() for p in pontos]),
+        pformat([ (r.p1.as_tuple(), r.p2.as_tuple(), r.algoritmo) for r in retas ])
     )
 
 # =========================
@@ -54,7 +61,6 @@ LARGURA_CANVAS = LARGURA_TOTAL - LARGURA_PAINEL
 COR_FUNDO = (255, 255, 255)
 COR_PAINEL_BG = (245, 245, 245)
 COR_PAINEL_BORDA = (200, 200, 200)
-COR_TABS_BG = (235, 235, 235)
 COR_TAB_ATIVA = (200, 220, 255)
 COR_TAB_INATIVA = (230, 230, 230)
 COR_BOTAO = (230, 230, 230)
@@ -67,13 +73,13 @@ COR_GRADE = (225, 225, 225)
 COR_EIXOS = (120, 120, 120)
 COR_CENTRO = (180, 60, 60)
 
-# Desenho
-COR_RETA = (0, 0, 0)
-COR_PREVIA = (120, 120, 120)
+# Texto / pontos / retas
 COR_PONTO = (0, 0, 0)
 COR_TEXTO = (0, 0, 255)
 RAIO_PONTO = 3
-DESLOC_TEXTO = (8, -12)  # deslocamento do texto das coordenadas
+DESLOC_TEXTO = (8, -12)
+COR_RETA = (0, 0, 0)
+COR_PREVIA = (120, 120, 120)
 
 # Tipografia
 TAM_FONTE = 16
@@ -94,7 +100,7 @@ ESP_GUIA = 1  # espessura da linha de prévia
 # =========================
 def inicializar():
     pg.init()
-    pg.display.set_caption("TP1 CG — Canvas + Painel lateral com abas")
+    pg.display.set_caption("TP1 CG — OOP com painel lateral e abas")
     tela = pg.display.set_mode((LARGURA_TOTAL, ALTURA))
     relogio = pg.time.Clock()
     fonte = pg.font.Font(None, TAM_FONTE)
@@ -106,20 +112,14 @@ def inicializar():
 # CONVERSÃO DE COORDENADAS (Canvas)
 # =========================
 def mundo_para_tela(x, y):
-    """
-    Sistema do MUNDO: origem no centro do CANVAS, y para cima.
-    Sistema de TELA: origem no canto superior esquerdo da JANELA (y para baixo).
-    """
+    """Converte um ponto do mundo (origem no centro do canvas, y para cima) para coordenadas de tela."""
     cx, cy = LARGURA_CANVAS // 2, ALTURA // 2
     sx = cx + x
     sy = cy - y
     return int(round(sx)), int(round(sy))
 
 def tela_para_mundo(sx, sy):
-    """
-    Converte coordenadas de tela (mouse) para o sistema centrado do CANVAS.
-    O caller deve garantir que o clique foi no canvas (sx < LARGURA_CANVAS).
-    """
+    """Converte coordenadas de tela (mouse) para o sistema centrado do canvas."""
     cx, cy = LARGURA_CANVAS // 2, ALTURA // 2
     x = sx - cx
     y = cy - sy
@@ -129,7 +129,7 @@ def tela_para_mundo(sx, sy):
 # DESENHO DO CANVAS E DO PAINEL
 # =========================
 def desenhar_canvas(tela):
-    """Desenha a área do canvas (esquerda) com grade e eixos."""
+    """Desenha a área do canvas com grade e eixos."""
     canvas_rect = pg.Rect(0, 0, LARGURA_CANVAS, ALTURA)
     pg.draw.rect(tela, COR_FUNDO, canvas_rect)
 
@@ -155,7 +155,7 @@ def desenhar_canvas(tela):
         pg.draw.line(tela, COR_GRADE, (0, y), (LARGURA_CANVAS, y), 1)
         y -= PASSO_GRADE
 
-    # Eixos (dentro do canvas)
+    # Eixos
     pg.draw.line(tela, COR_EIXOS, (0, cy), (LARGURA_CANVAS, cy), 2)
     pg.draw.line(tela, COR_EIXOS, (cx, 0), (cx, ALTURA), 2)
 
@@ -164,7 +164,7 @@ def desenhar_canvas(tela):
 
 def desenhar_painel(tela, fonte, aba_atual, algoritmo):
     """
-    Desenha o painel lateral (direito) com as abas e, dentro da aba ativa, os controles.
+    Desenha o painel lateral (direito) com as abas e os controles da aba ativa.
     Retorna:
       - dict com rects das abas
       - dict com rects dos controles da aba atual
@@ -173,7 +173,7 @@ def desenhar_painel(tela, fonte, aba_atual, algoritmo):
     pg.draw.rect(tela, COR_PAINEL_BG, painel_rect)
     pg.draw.line(tela, COR_PAINEL_BORDA, (LARGURA_CANVAS, 0), (LARGURA_CANVAS, ALTURA), 1)
 
-    # ----- Abas (topo do painel, empilhadas)
+    # Abas
     tabs = [
         (ABA_RETAS, "Retas"),
         (ABA_CIRC, "Circunf."),
@@ -196,10 +196,9 @@ def desenhar_painel(tela, fonte, aba_atual, algoritmo):
         tab_rects[key] = r
         y += tab_h + 6
 
-    # ----- Conteúdo da aba ativa
+    # Conteúdo da aba ativa
     controls_rects = {}
     content_area = pg.Rect(LARGURA_CANVAS + pad, y + 6, tab_w, ALTURA - (y + 6) - pad)
-
     titulo = fonte.render(f"Opções — {aba_atual.title()}", True, (0, 0, 0))
     tela.blit(titulo, (content_area.x, content_area.y))
 
@@ -235,28 +234,32 @@ def desenhar_painel(tela, fonte, aba_atual, algoritmo):
 
     elif aba_atual == ABA_CIRC:
         _texto_multilinha(tela, fonte, [
-            "Aba Circunf. (placeholder)",
-            "Próximo: algoritmo Midpoint Circle",
-            "Interação: clique 1 = centro; clique 2 = raio"
+            "Aba Circunf. (em breve)",
+            "Clique 1: centro",
+            "Clique 2: raio",
+            "Desenho pelo algoritmo Midpoint Circle."
         ], content_area.x, cy)
 
     elif aba_atual == ABA_POLI:
         _texto_multilinha(tela, fonte, [
-            "Aba Polígonos (placeholder)",
-            "Próximo: clicar vértices, fechar polígono",
-            "Rasterizar arestas com DDA/Bres."
+            "Aba Polígonos (em breve)",
+            "Clique sucessivos: vértices",
+            "Finalizar: clique especial ou botão",
+            "Arestas rasterizadas com DDA/Bres."
         ], content_area.x, cy)
 
     elif aba_atual == ABA_TRANSF:
         _texto_multilinha(tela, fonte, [
-            "Aba Transform. (placeholder)",
-            "Próximo: seleção + translação/rotação/escala",
-            "Regra: reta só seleciona se os 2 pontos forem selecionados."
+            "Aba Transform. (em breve)",
+            "Selecionar entidades e aplicar",
+            "Translação, rotação, escala",
+            "Reta só seleciona se os 2 pontos estiverem selecionados."
         ], content_area.x, cy)
 
     return tab_rects, controls_rects
 
 def _texto_multilinha(tela, fonte, linhas, x, y_inicial, dy=20):
+    """Desenha várias linhas de texto em sequência."""
     y = y_inicial
     for s in linhas:
         surf = fonte.render(s, True, (0, 0, 0))
@@ -264,74 +267,30 @@ def _texto_multilinha(tela, fonte, linhas, x, y_inicial, dy=20):
         y += dy
 
 # =========================
-# RASTERIZAÇÃO DE RETAS
+# DESENHO DAS ENTIDADES
 # =========================
-def put_pixel(tela, x, y, cor):
-    # só desenha dentro do canvas
-    if 0 <= x < LARGURA_CANVAS and 0 <= y < ALTURA:
-        tela.set_at((int(x), int(y)), cor)
+def desenhar_pontos(tela, fonte, pontos):
+    """Percorre a lista de objetos Ponto e desenha cada um."""
+    for ponto in pontos:
+        # Removemos 'label=True' — basta passar a fonte para desenhar as coordenadas
+        ponto.draw(tela, mundo_para_tela, radius=RAIO_PONTO, color=COR_PONTO,
+                   font=fonte, label_color=COR_TEXTO)
 
-def reta_dda(tela, x0, y0, x1, y1, cor):
-    x0, y0 = float(x0), float(y0)
-    x1, y1 = float(x1), float(y1)
-    dx, dy = x1 - x0, y1 - y0
-    passos = int(max(abs(dx), abs(dy)))
-    log.debug("DDA | A=(%.1f,%.1f) B=(%.1f,%.1f) | passos=%d", x0, y0, x1, y1, passos)
-    if passos == 0:
-        put_pixel(tela, round(x0), round(y0), cor); return
-    inc_x, inc_y = dx / passos, dy / passos
-    x, y = x0, y0
-    for _ in range(passos + 1):
-        put_pixel(tela, round(x), round(y), cor)
-        x += inc_x; y += inc_y
+def desenhar_retas(tela, retas):
+    """Percorre a lista de objetos Reta e desenha cada um usando seu algoritmo."""
+    for reta in retas:
+        reta.draw(tela, mundo_para_tela, color=COR_RETA)
 
-def reta_bresenham(tela, x0, y0, x1, y1, cor):
-    x0, y0 = int(round(x0)), int(round(y0))
-    x1, y1 = int(round(x1)), int(round(y1))
-    steep = abs(y1 - y0) > abs(x1 - x0)
-    if steep:
-        x0, y0, x1, y1 = y0, x0, y1, x1
-    if x0 > x1:
-        x0, x1, y0, y1 = x1, x0, y1, y0
-    dx, dy = x1 - x0, abs(y1 - y0)
-    err = dx // 2
-    ystep = 1 if y0 < y1 else -1
-    y = y0
-    for x in range(x0, x1 + 1):
-        if steep: put_pixel(tela, y, x, cor)
-        else:     put_pixel(tela, x, y, cor)
-        err -= dy
-        if err < 0:
-            y += ystep
-            err += dx
-
-# =========================
-# DESENHO DE ENTIDADES
-# =========================
-def desenhar_pontos(tela, fonte, pontos_mundo):
-    for (x, y) in pontos_mundo:
-        sx, sy = mundo_para_tela(x, y)
-        pg.draw.circle(tela, COR_PONTO, (sx, sy), RAIO_PONTO)
-        label = fonte.render(f"({x}, {y})", True, COR_TEXTO)
-        tela.blit(label, (sx + DESLOC_TEXTO[0], sy + DESLOC_TEXTO[1]))
-
-def desenhar_retas(tela, retas_mundo, algoritmo):
-    for (ax, ay), (bx, by) in retas_mundo:
-        sx0, sy0 = mundo_para_tela(ax, ay)
-        sx1, sy1 = mundo_para_tela(bx, by)
-        if algoritmo == ALGO_DDA:
-            reta_dda(tela, sx0, sy0, sx1, sy1, COR_RETA)
-        else:
-            reta_bresenham(tela, sx0, sy0, sx1, sy1, COR_RETA)
-
-# def desenhar_previa(tela, ponto_A_mundo, pos_mouse_tela):
-#     if ponto_A_mundo is None or pos_mouse_tela is None:
-#         return
-#     ax, ay = mundo_para_tela(*ponto_A_mundo)
-#     mx, my = pos_mouse_tela
-#     if mx >= LARGURA_CANVAS:  # não cruzar para o painel
-#         mx = LARGURA_CANVAS - 1
-#     pg.draw.line(tela, COR_PREVIA, (ax, ay), (mx, my), ESP_GUIA)
+def desenhar_previa(tela, ponto_A, pos_mouse):
+    """Desenha a linha de prévia entre Ponto A e a posição atual do mouse no canvas."""
+    if ponto_A is None or pos_mouse is None:
+        return
+    ax, ay = mundo_para_tela(ponto_A.x, ponto_A.y)
+    mx, my = pos_mouse
+    # Evita cruzar para o painel
+    if mx >= LARGURA_CANVAS:
+        mx = LARGURA_CANVAS - 1
+    pg.draw.line(tela, COR_PREVIA, (ax, ay), (mx, my), ESP_GUIA)
 
 # =========================
 # MAIN LOOP
@@ -341,22 +300,22 @@ def main():
 
     # Estado
     aba_atual = ABA_RETAS
-    algoritmo = ALGO_BRES
-    pontos_mundo = []
-    retas_mundo = []
-    ponto_A = None
+    algoritmo_atual = ALGO_BRES
+    pontos = []  # lista de Ponto
+    retas = []   # lista de Reta
+    ponto_A = None  # referência para o primeiro ponto (Ponto)
 
-    dump_estado(pontos_mundo, retas_mundo, algoritmo, ponto_A, aba_atual)
+    dump_estado(pontos, retas, algoritmo_atual, ponto_A, aba_atual)
 
     rodando = True
     while rodando:
         # DESENHO
         desenhar_canvas(tela)
-        tab_rects, ctrl_rects = desenhar_painel(tela, fonte, aba_atual, algoritmo)
-        desenhar_retas(tela, retas_mundo, algoritmo)
-        desenhar_pontos(tela, fonte, pontos_mundo)
-        # if aba_atual == ABA_RETAS and ponto_A is not None:
-        #     desenhar_previa(tela, ponto_A, pg.mouse.get_pos())
+        tab_rects, ctrl_rects = desenhar_painel(tela, fonte, aba_atual, algoritmo_atual)
+        desenhar_retas(tela, retas)
+        desenhar_pontos(tela, fonte, pontos)
+        if aba_atual == ABA_RETAS and ponto_A is not None:
+            desenhar_previa(tela, ponto_A, pg.mouse.get_pos())
 
         pg.display.flip()
         relogio.tick(60)
@@ -369,74 +328,77 @@ def main():
 
             elif ev.type == pg.MOUSEBUTTONDOWN and ev.button == 1:
                 sx, sy = ev.pos
+
                 # Clique no PAINEL (lado direito)
                 if sx >= LARGURA_CANVAS:
                     # Abas
-                    clicou_aba = False
                     for key, r in tab_rects.items():
                         if r.collidepoint(sx, sy):
                             if key != aba_atual:
                                 aba_atual = key
                                 log.info("Aba -> %s", aba_atual)
-                                dump_estado(pontos_mundo, retas_mundo, algoritmo, ponto_A, aba_atual)
-                            clicou_aba = True
+                                dump_estado(pontos, retas, algoritmo_atual, ponto_A, aba_atual)
                             break
-                    if clicou_aba:
-                        continue
+                    else:
+                        # Controles da aba Retas
+                        if aba_atual == ABA_RETAS:
+                            r_dda = ctrl_rects.get("DDA")
+                            r_bres = ctrl_rects.get("BRES")
+                            r_limpar = ctrl_rects.get("LIMPAR")
 
-                    # Controles da aba Retas
-                    if aba_atual == ABA_RETAS:
-                        r_dda = ctrl_rects.get("DDA")
-                        r_bres = ctrl_rects.get("BRES")
-                        r_limpar = ctrl_rects.get("LIMPAR")
+                            if r_dda and r_dda.collidepoint(sx, sy):
+                                if algoritmo_atual != ALGO_DDA:
+                                    algoritmo_atual = ALGO_DDA
+                                    log.info("Algoritmo -> DDA (para novas retas)")
+                                    dump_estado(pontos, retas, algoritmo_atual, ponto_A, aba_atual)
+                                continue
 
-                        if r_dda and r_dda.collidepoint(sx, sy):
-                            if algoritmo != ALGO_DDA:
-                                algoritmo = ALGO_DDA
-                                log.info("Algoritmo -> DDA")
-                                dump_estado(pontos_mundo, retas_mundo, algoritmo, ponto_A, aba_atual)
-                            continue
+                            if r_bres and r_bres.collidepoint(sx, sy):
+                                if algoritmo_atual != ALGO_BRES:
+                                    algoritmo_atual = ALGO_BRES
+                                    log.info("Algoritmo -> Bresenham (para novas retas)")
+                                    dump_estado(pontos, retas, algoritmo_atual, ponto_A, aba_atual)
+                                continue
 
-                        if r_bres and r_bres.collidepoint(sx, sy):
-                            if algoritmo != ALGO_BRES:
-                                algoritmo = ALGO_BRES
-                                log.info("Algoritmo -> Bresenham")
-                                dump_estado(pontos_mundo, retas_mundo, algoritmo, ponto_A, aba_atual)
-                            continue
+                            if r_limpar and r_limpar.collidepoint(sx, sy):
+                                log.info("LIMPAR | antes: #pontos=%d #retas=%d", len(pontos), len(retas))
+                                pontos.clear(); retas.clear(); ponto_A = None
+                                log.info("LIMPAR | depois: #pontos=%d #retas=%d", len(pontos), len(retas))
+                                dump_estado(pontos, retas, algoritmo_atual, ponto_A, aba_atual)
+                                continue
 
-                        if r_limpar and r_limpar.collidepoint(sx, sy):
-                            log.info("LIMPAR | antes: #pontos=%d #retas=%d", len(pontos_mundo), len(retas_mundo))
-                            pontos_mundo.clear(); retas_mundo.clear(); ponto_A = None
-                            log.info("LIMPAR | depois: #pontos=%d #retas=%d", len(pontos_mundo), len(retas_mundo))
-                            dump_estado(pontos_mundo, retas_mundo, algoritmo, ponto_A, aba_atual)
-                            continue
-
-                    continue  # clique foi no painel (sem mais ação)
+                    # Clique no painel processado
+                    continue
 
                 # Clique no CANVAS (lado esquerdo)
                 if aba_atual == ABA_RETAS:
                     x, y = tela_para_mundo(sx, sy)
-                    pontos_mundo.append((x, y))
+                    novo_ponto = Ponto(x, y)
+                    pontos.append(novo_ponto)
                     log.info("Ponto criado (RETAS) | mundo=(%d,%d)", x, y)
 
                     if ponto_A is None:
-                        ponto_A = (x, y)
-                        log.info("Definido Ponto A: %s", ponto_A)
+                        ponto_A = novo_ponto
+                        log.info("Definido Ponto A: %s", ponto_A.as_tuple())
                     else:
-                        ponto_B = (x, y)
-                        retas_mundo.append((ponto_A, ponto_B))
-                        log.info("Reta criada A->B | A=%s B=%s | algoritmo_atual=%s",
-                                 ponto_A, ponto_B, algoritmo)
+                        ponto_B = novo_ponto
+                        nova_reta = Reta(ponto_A, ponto_B, algoritmo_atual)
+                        retas.append(nova_reta)
+                        log.info("Reta criada A->B | A=%s B=%s | algoritmo=%s",
+                                 ponto_A.as_tuple(), ponto_B.as_tuple(), algoritmo_atual)
                         ponto_A = None
-                        dump_estado(pontos_mundo, retas_mundo, algoritmo, ponto_A, aba_atual)
+                        dump_estado(pontos, retas, algoritmo_atual, ponto_A, aba_atual)
 
                 elif aba_atual == ABA_CIRC:
+                    # Placeholder: criação de Circunferência
                     log.info("Clique em canvas na aba CIRCUNF (placeholder): tela=(%d,%d)", sx, sy)
 
                 elif aba_atual == ABA_POLI:
+                    # Placeholder: criação de Polígono
                     log.info("Clique em canvas na aba POLIGONOS (placeholder): tela=(%d,%d)", sx, sy)
 
                 elif aba_atual == ABA_TRANSF:
+                    # Placeholder: seleção e transformações
                     log.info("Clique em canvas na aba TRANSFORM (placeholder): tela=(%d,%d)", sx, sy)
 
     pg.quit()
