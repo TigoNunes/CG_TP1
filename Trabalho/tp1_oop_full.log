@@ -1,11 +1,21 @@
-23:24:08 | INFO | Pygame inicializado: 1200x700
-23:24:10 | INFO | Polígono aberto criado com 3 vértices
-23:24:13 | INFO | Seleção concluída: 1 pontos selecionados
-23:24:14 | INFO | Seleção concluída: 3 pontos selecionados
-23:24:19 | INFO | Seleção concluída: 3 pontos selecionados
-23:24:21 | INFO | Seleção concluída: 1 pontos selecionados
-23:24:22 | INFO | Seleção concluída: 3 pontos selecionados
-23:24:23 | INFO | Seleção concluída: 3 pontos selecionados
-23:24:24 | INFO | Seleção concluída: 2 pontos selecionados
-23:24:24 | INFO | Seleção concluída: 3 pontos selecionados
-23:24:25 | INFO | Seleção concluída: 0 pontos selecionados
+14:29:26 | INFO | Pygame inicializado: 1200x700
+14:29:32 | INFO | Polígono aberto criado com 4 vértices
+14:29:34 | INFO | Seleção concluída: 2 pontos (brutos)
+14:29:34 | INFO | Pontos transformáveis (objetos completos): 0
+14:29:34 | INFO | Nenhum objeto completo na seleção — modal não aberto.
+14:29:36 | INFO | Seleção concluída: 2 pontos (brutos)
+14:29:36 | INFO | Pontos transformáveis (objetos completos): 2
+14:29:42 | INFO | Aplicando transformações: dx=0.0, dy=0.0, ang=20.0, esc=1.0, n_pontos=2
+14:29:44 | INFO | Seleção concluída: 2 pontos (brutos)
+14:29:44 | INFO | Pontos transformáveis (objetos completos): 2
+14:29:49 | INFO | Aplicando transformações: dx=0.0, dy=0.0, ang=0.0, esc=-2.0, n_pontos=2
+14:29:52 | INFO | Seleção concluída: 1 pontos (brutos)
+14:29:52 | INFO | Pontos transformáveis (objetos completos): 0
+14:29:52 | INFO | Nenhum objeto completo na seleção — modal não aberto.
+14:29:53 | INFO | Seleção concluída: 0 pontos (brutos)
+14:29:53 | INFO | Pontos transformáveis (objetos completos): 0
+14:29:53 | INFO | Nenhum objeto completo na seleção — modal não aberto.
+14:29:54 | INFO | Seleção concluída: 2 pontos (brutos)
+14:29:54 | INFO | Pontos transformáveis (objetos completos): 2
+14:29:58 | INFO | Aplicando transformações: dx=0.0, dy=0.0, ang=0.0, esc=3.0, n_pontos=2
+14:29:59 | INFO | Canvas limpo
