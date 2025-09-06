@@ -245,17 +245,17 @@ class Poligono:
 
     vertices: List[Ponto]
     algoritmo: str = "BRESENHAM"
-    # fechado: bool = False
+    fechado: bool = False
 
-    # def add_vertice(self, p: Ponto) -> None:
-    #     """Adiciona um vertice ao poligono. Se o poligono estiver fechado,
-    #     este metodo nao faz nada."""
-    #     if not self.fechado:
-    #         self.vertices.append(p)
+    def add_vertice(self, p: Ponto) -> None:
+        """Adiciona um vertice ao poligono. Se o poligono estiver fechado,
+        este metodo nao faz nada."""
+        if not self.fechado:
+            self.vertices.append(p)
 
-    # def close(self) -> None:
-    #     """Fecha o poligono, conectando o ultimo vertice ao primeiro."""
-    #     self.fechado = True
+    def close(self) -> None:
+        """Fecha o poligono, conectando o ultimo vertice ao primeiro."""
+        self.fechado = True
 
     def translate(self, dx: int, dy: int) -> None:
         for v in self.vertices:
