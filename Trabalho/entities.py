@@ -1,10 +1,3 @@
-"""
-Modulo entities define classes para entidades geometricas 2D usadas no
-trabalho de Computacao Grafica (TP1). Cada entidade conhece sua geometria e
-como desenhar-se sobre um surface do pygame utilizando funcoes de conversao
-de coordenadas fornecidas externamente.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass

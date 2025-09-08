@@ -1,16 +1,3 @@
-"""
-Modulo de transformações para as entidades geométricas.
-
-Este arquivo define classes que encapsulam as transformações básicas
- (translação, escala e rotação) para serem aplicadas em conjuntos
- de entidades do módulo `entities.py`. Cada transformação recebe
- um iterável de entidades e aplica a operação correspondente.
-
-Estas classes podem ser utilizadas no arquivo `main_lateral.py` ou
- qualquer outro lugar para aplicar transformações de maneira
- consistente, mantendo o código organizado e reutilizável.
-"""
-
 from typing import Iterable, Tuple
 
 # Importamos as entidades para poder aplicar transformações

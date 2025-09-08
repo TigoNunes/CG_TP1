@@ -1,11 +1,3 @@
-
-# =========================
-# main.py — TP1 Computação Gráfica
-#
-# Interface gráfica e lógica principal do trabalho prático 1.
-# Utiliza pygame para renderização e manipulação de entidades geométricas.
-# =========================
-
 import sys
 import logging
 import pygame as pg
@@ -354,9 +346,6 @@ def desenhar_retangulo_selec(tela, rect_screen):
     fill_surf = pg.Surface((max(r.w,1), max(r.h,1)), pg.SRCALPHA); fill_surf.fill(COR_SEL_FILL)
     tela.blit(fill_surf, r.topleft)
     pg.draw.rect(tela, COR_SEL_BORDA, r, width=2)
-
-# -------------------------
-# Helpers seleção por objeto
 
 # -------------------------
 # Helpers seleção por objeto
