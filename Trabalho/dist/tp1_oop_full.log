@@ -1,2 +1,9 @@
-14:34:35 | INFO | Pygame inicializado: 1200x700
-14:34:42 | INFO | Canvas limpo
+22:19:06 | INFO | Pygame inicializado: 1200x700
+22:19:17 | INFO | Polígono aberto criado com 3 vértices
+22:19:20 | INFO | Seleção concluída: 4 pontos (brutos)
+22:19:20 | INFO | Pontos transformáveis (objetos completos): 4
+22:19:32 | INFO | Aplicando transformações: dx=6.0, dy=-2.0, ang=0.0, esc=2.0, n_pontos=4
+22:19:34 | INFO | Seleção concluída: 0 pontos (brutos)
+22:19:34 | INFO | Pontos transformáveis (objetos completos): 0
+22:19:34 | INFO | Nenhum objeto completo na seleção — modal não aberto.
+22:19:37 | INFO | Canvas limpo
